@@ -1,0 +1,25 @@
+{
+  "name": "http-log-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monitor Log HTTP apache - Applicazioni BPB",
+  "author": {
+    "email": "b.renzoni@popolarebari.it",
+    "name": "Bruno Renzoni"
+  },
+  "scripts": {
+    "start": "node collectStat.js"
+  },
+  "dependencies": {
+    "express": "*",
+    "mongodb": "*",
+    "moment": "*",
+    "serve-favicon": "*",
+    "morgan": "*",
+    "body-parser": "*",
+    "errorhandler": "*",
+    "ws": "4.*",
+    "cors": "*",
+    "always-tail": "*"
+  }
+}

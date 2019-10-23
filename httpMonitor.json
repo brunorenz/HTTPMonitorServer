@@ -1,0 +1,20 @@
+{
+	"urlDBTest": "srvwas1.bpbari.it:27017",
+	"urlDB": "srvvs35.bpbari.it:27017",
+	"onlyServer": true,
+	"onlyTail": true,
+	"timeout": 15000,
+	"interval": 0.25,
+	"timeoutHTTP": 15000,
+	"intervalHTTP": 0.25,
+	"timeoutRBUS": 30000,
+	"intervalRBUS": 0.50,
+	"portX": 8088,
+	"guiServerX": "http://srvwas1.bpbari.it:80",
+	"filesToTail": [
+		{
+			"id": "HTTPWAS1",
+			"path": "/mnt/WASSHARE/logs/HTTPAccessMonitor.log"
+		}
+	]
+}
