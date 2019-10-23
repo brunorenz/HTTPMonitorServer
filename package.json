@@ -11,15 +11,16 @@
     "start": "node collectStat.js"
   },
   "dependencies": {
-    "express": "*",
-    "mongodb": "*",
-    "moment": "*",
-    "serve-favicon": "*",
-    "morgan": "*",
+    "always-tail": "*",
     "body-parser": "*",
-    "errorhandler": "*",
-    "ws": "4.*",
     "cors": "*",
-    "always-tail": "*"
+    "errorhandler": "*",
+    "eslint": "^6.5.1",
+    "express": "*",
+    "moment": "*",
+    "mongodb": "*",
+    "morgan": "*",
+    "serve-favicon": "*",
+    "ws": "4.*"
   }
 }
