@@ -488,20 +488,24 @@ function _getGenericData(res, inputData) {
     //print(">>> FINALIZE OUTPUT (OUT) = " + tojson(out));
     return out;
   };
+  /**
+   * MAP Function
+   */
   var getDataMap = function() {
     var key = {
-      time: this._id.time,
-      server: this._id.server
+      //time: this._id.time,
+      //server: this._id.server
     };
 
     // interval management
     if (interval && interval > 0) {
       var div = 1000 * 60 * interval;
-      var l1 = key.time.getTime();
+      var l1 = this._id.time.getTime();
       var l2 = Math.floor(l1 / div) * div;
       key.time = new Date(l2);
       //print("OLD Time : " + l1 + " - NEW Time " + l2);
     }
+    if (server) key.server = this._id.server;
     // time.getTime()
     if (type === "app") {
       key.application = this._id.application;
@@ -566,7 +570,8 @@ function _getGenericData(res, inputData) {
       },
       scope: {
         type: inputData.type,
-        interval: inputData.interval
+        interval: inputData.interval,
+        server: inputData.server
       },
       finalize: getDataFinalize
     },
@@ -732,6 +737,7 @@ var getHTTPStatistics = function(req, res) {
   if (!httpUtils.checkSecurity(req, res)) return;
   var type = req.query.type ? req.query.type : DEF_TYPE;
   var time = req.query.time ? req.query.time : DEF_TIME;
+  var server = req.query.server ? req.query.server === "true" : true;
   if (type != "full" && type != "app" && type != "method") type = DEF_TYPE;
   if (time != "day" && time != "hour" && time != "current") time = DEF_TIME;
   if (time === "hour") DEF_INTERVAL = 5;
@@ -745,22 +751,17 @@ var getHTTPStatistics = function(req, res) {
     type: type,
     time: time,
     interval: interval,
+    server: server,
     httpCollection: globaljs.collStatFull,
     callBackFunction: _getGenericData
   };
-  if (time === "day") {
-    inputData.callBackFunction = _getGenericData;
-  } else if (time === "hour") {
-    inputData.callBackFunction = _getGenericData;
-  } else {
-    inputData.callBackFunction = _getGenericData;
-  }
+  inputData.callBackFunction = _getGenericData;
   if (type === "method") inputData.httpCollection = globaljs.collStat;
   processLastRecord(res, inputData);
 };
 /**
  * Return HTTP server statistics according the input parameters
- */
+ 
 var getStatistics = function(req, res) {
   const DEF_TYPE = "full";
   const DEF_TIME = "current";
@@ -792,7 +793,7 @@ var getStatistics = function(req, res) {
   if (type === "method") inputData.httpCollection = globaljs.collStat;
   processLastRecord(res, inputData);
 };
-
+*/
 /**
  * Return the distinct application with available statistics
  */
@@ -953,7 +954,6 @@ module.exports.CleanHTTPLogInternal = cleanHTTPLogInternal;
 
 module.exports.GetDistinctApplication = distinctApplication;
 
-//module.exports.GetStatistics = getStatistics;
 module.exports.GetHTTPStatistics = getHTTPStatistics;
 
 module.exports.GetHTTPCurrentPerformaceStatistics = getHTTPCurrentPerformaceStatistics;
