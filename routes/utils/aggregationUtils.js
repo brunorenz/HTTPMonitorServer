@@ -1,5 +1,6 @@
 var globaljs = require("../global");
 var myutils = require("../myutils");
+var httpUtils = require("./httpUtils");
 /**
  * Get last tms_exe in the httpLog
  * @param {*} res
@@ -16,7 +17,7 @@ module.exports.getLastCollectionRecord = function(res, inputData) {
     function(err, doc) {
       if (err) {
         console.log("ERRORE lettura " + inputData.collection + " : " + err);
-        res.json(createResponse(null, 500, err));
+        res.json(httpUtils.createResponse(null, 500, err));
       } else {
         if (doc) {
           // tolgo secondi
