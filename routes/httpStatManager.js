@@ -29,7 +29,6 @@ function processLastRecord(res, inputData) {
       } else {
         if (doc) {
           inputData.lst_exe = doc._id.time;
-          // inputData.result = doc;
           if (inputData.time === "current") {
             inputData.query = {
               "_id.time": inputData.lst_exe
@@ -43,10 +42,17 @@ function processLastRecord(res, inputData) {
               topDate = myutils.floorTime(inputData.interval, topDate);
             //TODO
             // tolgo 60 minuti
-            var div = 1000 * 60 * 60;
-            if (inputData.time === "day") div = 1000 * 60 * 60 * 24;
-            //var infDate = new Date(inputData.lst_exe.getTime() - div);
+            var div = 0;
+            if (inputData.time === "hour") div = 1000 * 60 * 60;
+            else if (inputData.time === "day") div = 1000 * 60 * 60 * 24;
             var infDate = new Date(topDate.getTime() - div);
+            if (div === 0) {
+              //today
+              infDate.setHours(0);
+              infDate.setMinutes(0);
+              infDate.setSeconds(0);
+              infDate.setMilliseconds(0);
+            }
             inputData.topDate = topDate;
             inputData.infDate = infDate;
             inputData.query = {
@@ -484,7 +490,7 @@ function _getGenericData(res, inputData) {
     } else {
       out.avarageTimeRedirect = 0;
     }
-
+    out.koCount = out.clientErrorCount + out.serverErrorCount;
     //print(">>> FINALIZE OUTPUT (OUT) = " + tojson(out));
     return out;
   };
@@ -559,15 +565,62 @@ function _getGenericData(res, inputData) {
 
     return reduce;
   };
+  function getCurrentDataSort(res, values) {
+    let compareFunction = function(a, b) {
+      if (a.value[inputData.sortField] === b.value[inputData.sortField])
+        return 0;
+      return a.value[inputData.sortField] < b.value[inputData.sortField]
+        ? 1
+        : -1;
+    };
+    let found = function(array, entry) {
+      for (index = 0; index < array.length; index++)
+        if (array[index] === entry) return true;
+      return false;
+    };
+    var out = [];
+    var distServer = [];
+    if (values) {
+      console.log("Restituiti " + values.length + " record!");
+      var sortedValues = values.sort(compareFunction);
+      for (var i = 0; i < sortedValues.length; i++) {
+        let value = sortedValues[i];
+        var entry = {
+          key: {
+            time: value._id.time,
+            server: value._id.server
+          },
+          value: value.value
+        };
+        if (!found(distServer, value._id.server))
+          distServer.push(value._id.server);
+        if (value._id.application)
+          entry.key.application = value._id.application;
+        out.push(entry);
+      }
+    }
+    var result = {
+      configurazione: {
+        interval: inputData.interval,
+        infDate: inputData.infDate,
+        supDate: inputData.topDate,
+        servers: distServer
+      },
+      dati: out
+    };
+    res.json(httpUtils.createResponse(result));
+  }
 
   globaljs.mongoCon.collection(inputData.httpCollection).mapReduce(
     getDataMap,
     getDataReduce,
     {
       query: inputData.query,
-      out: {
-        replace: "tempResult"
-      },
+      out: inputData.sort
+        ? { inline: 1 }
+        : {
+            replace: "tempResult"
+          },
       scope: {
         type: inputData.type,
         interval: inputData.interval,
@@ -575,69 +628,56 @@ function _getGenericData(res, inputData) {
       },
       finalize: getDataFinalize
     },
-    function(err, collection, stats) {
+    function(err, collection) {
       if (err) {
         console.log("ERROR in _getGenericData mapReduce -  " + err);
         res.json(httpUtils.createResponse(null, 500, err));
       } else {
-        collection.find({}).toArray(function(err, values) {
-          found = function(array, entry) {
-            for (index = 0; index < array.length; index++)
-              if (array[index] === entry) return true;
-            return false;
-          };
-          var out = [];
-          var distServer = [];
-          if (values) {
-            console.log("Restituiti " + values.length + " record!");
-            // pulisco
-            for (var i = 0; i < values.length; i++) {
-              var entry = {
-                key: {
-                  time: values[i]._id.time,
-                  //timeL: values[i]._id.time.getTime(),
-                  server: values[i]._id.server
-                },
-                value: values[i].value
-              };
-              if (!found(distServer, values[i]._id.server))
-                distServer.push(values[i]._id.server);
-              if (values[i]._id.application)
-                entry.key.application = values[i]._id.application;
-              out.push(entry);
+        if (inputData.sort) getCurrentDataSort(res, collection);
+        else {
+          collection.find({}).toArray(function(err, values) {
+            found = function(array, entry) {
+              for (index = 0; index < array.length; index++)
+                if (array[index] === entry) return true;
+              return false;
+            };
+            var out = [];
+            var distServer = [];
+            if (values) {
+              console.log("Restituiti " + values.length + " record!");
+              // pulisco
+              for (var i = 0; i < values.length; i++) {
+                var entry = {
+                  key: {
+                    time: values[i]._id.time,
+                    //timeL: values[i]._id.time.getTime(),
+                    server: values[i]._id.server
+                  },
+                  value: values[i].value
+                };
+                if (!found(distServer, values[i]._id.server))
+                  distServer.push(values[i]._id.server);
+                if (values[i]._id.application)
+                  entry.key.application = values[i]._id.application;
+                out.push(entry);
+              }
             }
-          }
-          var result = {
-            configurazione: {
-              interval: inputData.interval,
-              infDate: inputData.infDate,
-              supDate: inputData.topDate,
-              servers: distServer
-            },
-            dati: out
-          };
-          var emptyRecord = {
-            okCount: 0,
-            totalTime: 0,
-            totalSize: 0,
-            redirectCount: 0,
-            totalTimeRedirect: 0,
-            clientErrorCount: 0,
-            serverErrorCount: 0,
-            notClassifiedCount: 0,
-            num: 0,
-            avarageTime: 0,
-            avarageSize: 0,
-            avarageTimeRedirect: 0
-          };
-          //myutils.createGraphStructure(result, emptyRecord);
-          res.json(httpUtils.createResponse(result));
-        });
+            var result = {
+              configurazione: {
+                interval: inputData.interval,
+                infDate: inputData.infDate,
+                supDate: inputData.topDate,
+                servers: distServer
+              },
+              dati: out
+            };
+            res.json(httpUtils.createResponse(result));
+          });
+        }
       }
     }
   );
 }
-
 /**
  * Process current statistics
  *
@@ -738,23 +778,37 @@ var getHTTPStatistics = function(req, res) {
   var type = req.query.type ? req.query.type : DEF_TYPE;
   var time = req.query.time ? req.query.time : DEF_TIME;
   var server = req.query.server ? req.query.server === "true" : true;
+  var avg = req.query.avg ? req.query.avg === "true" : false;
+  var onlyKo = req.query.onlyKo ? req.query.onlyKo === "true" : false;
   if (type != "full" && type != "app" && type != "method") type = DEF_TYPE;
-  if (time != "day" && time != "hour" && time != "current") time = DEF_TIME;
+  if (time != "day" && time != "hour" && time != "current" && time != "today")
+    time = DEF_TIME;
   if (time === "hour") DEF_INTERVAL = 5;
-  else if (time === "day") DEF_INTERVAL = 30;
+  else if (time === "day" || time === "today") DEF_INTERVAL = 30;
   var c = parseInt(req.query.interval);
   var interval = Number.isNaN(c) ? DEF_INTERVAL : c;
-
-  console.log("getHTTPStatistics for type : " + type + " and time : " + time);
-  // recupero ultimo aggiornamento
   var inputData = {
     type: type,
     time: time,
     interval: interval,
     server: server,
+    avg: avg,
+    onlyKo: onlyKo,
     httpCollection: globaljs.collStatFull,
     callBackFunction: _getGenericData
   };
+  if (interval === 0) {
+    if (avg) {
+      inputData.sort = { "value.avarageTime": -1 };
+      inputData.sortField = "avarageTime";
+    } else {
+      inputData.sort = onlyKo
+        ? { "value.koCount": -1 }
+        : { "value.okCount": -1 };
+      inputData.sortField = onlyKo ? "koCount" : "okCount";
+    }
+  }
+  // recupero ultimo aggiornamento
   inputData.callBackFunction = _getGenericData;
   if (type === "method") inputData.httpCollection = globaljs.collStat;
   processLastRecord(res, inputData);
